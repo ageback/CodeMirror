@@ -83,8 +83,27 @@
     pick: function(data, i) {
       var completion = data.list[i];
       if (completion.hint) completion.hint(this.cm, data, completion);
-      else this.cm.replaceRange(getText(completion), completion.from || data.from,
-                                completion.to || data.to, "complete");
+      else {
+        var _data;
+        var node = this.widget.hints.childNodes[this.widget.selectedHint];
+        if (node._insertCode) {
+          _data = node._insertCode;
+        } else
+          _data = getText(completion);
+        //editor.getLine();
+        var _line = this.cm.getLine(data.from.line),
+          _char = _line[data.from.ch];
+        //alert(data.from.ch);
+        if (_char == '\"' || _char == '\'') {
+          if (top.stringValueInput && top.stringValueInput != "")
+            data.from.ch = _line.indexOf(top.stringValueInput);
+          else
+            data.from.ch = this.cm.getCursor().ch;
+        }
+        this.cm.replaceRange(_data, completion.from || data.from,
+          completion.to || data.to, "complete");
+      }
+
       CodeMirror.signal(data, "pick", completion);
       this.close();
     },
@@ -117,6 +136,26 @@
 
     finishUpdate: function(data, first) {
       if (this.data) CodeMirror.signal(this.data, "update");
+      if (data && this.data) {
+        //debugger;
+        top._tttt += "," + this.cm.getLine(data.from.line) + "#" + this.data.from.ch + "#" + this.data.to.ch + "#" + data.from.ch + "#" + data.to.ch;
+        /*
+          if (data.to.ch == this.data.to.ch + 1 && 
+          (this.cm.getLine(data.from.line)[this.data.to.ch] == '[' || 
+          this.cm.getLine(data.from.line)[this.data.to.ch] == ':')){
+            ;
+          }
+          else
+          */
+        if (data.to.ch == this.data.to.ch + 1)
+          data.from.ch = this.data.from.ch;
+        if (CodeMirror.cmpPos(data.from, this.data.from))
+          data = null;
+
+
+        //if (CodeMirror.cmpPos(data.from, this.data.from))
+
+      }
 
       var picked = (this.widget && this.widget.picked) || (first && this.options.completeSingle);
       if (this.widget) this.widget.close();
@@ -125,12 +164,12 @@
       this.data = data;
 
       if (data && data.list.length) {
-        if (picked && data.list.length == 1) {
-          this.pick(data, 0);
-        } else {
+       // if (picked && data.list.length == 1) {
+       //  this.pick(data, 0);
+       // } else {
           this.widget = new Widget(this, data);
           CodeMirror.signal(data, "shown");
-        }
+       // }
       }
     }
   };
@@ -216,7 +255,124 @@
       if (cur.className != null) className = cur.className + " " + className;
       elt.className = className;
       if (cur.render) cur.render(elt, data, cur);
-      else elt.appendChild(document.createTextNode(cur.displayText || getText(cur)));
+      else {
+        var _text, img_notes = null;
+        if (cur.displayText)
+          _text = cur.displayText;
+        else {
+          _text = getText(cur);
+          var _type_index = 0,
+            _title = elt.appendChild(document.createElement("span")),
+            _title_tips = ["[系统原生]", "[平台方法]", "[全局变量]", "[代码模板]", "", "[字符资源]"],
+            img = elt.appendChild(document.createElement("img")),
+            img_src = ["/Sys/FrameWork/Common/Images/Toolbar/icon_fileFromWeb_over.gif",
+              "/Sys/FrameWork/Common/Images/function.gif",
+              "/Sys/FrameWork/Common/Images/icon/navigator.gif",
+              "/Sys/FrameWork/Common/Images/icon32/type/js.gif",
+              //"/Sys/FrameWork/Common/Images/Toolbar/icon_project.gif",
+              "/Sys/FrameWork/Common/Images/function.gif",
+              "/Sys/FrameWork/Common/Images/icon32/type/js.gif"
+            ];
+          $(_title).css({
+            "font-size": "12px",
+            "font-weight": "bold",
+            "margin-right": "3px"
+          });
+          $(img).css({
+            "margin-top": "0px",
+            "margin-right": "3px",
+            "vertical-align": "middle",
+            "width": "18px",
+            "height": "16px"
+          });
+
+          if (_language == "csharp") {
+            _title_tips = ["[公共方法]", "[公共属性]", "[类型定义]", "[命名空间]", "[模板代码]", "[成员变量]", "[局部变量]"];
+            img_src = ["/Sys/FrameWork/Common/Images/icon/function.png",
+              "/Sys/FrameWork/Common/Images/icon/parameter.png",
+              "/Sys/FrameWork/Common/Images/icon/class.png",
+              "/Sys/FrameWork/Common/Images/icon/namespace.png",
+              //"/Sys/FrameWork/Common/Images/Toolbar/icon_project.gif",
+              "/Sys/FrameWork/Common/Images/icon/navigator.gif",
+              "/Sys/FrameWork/Common/Images/icon/field.png",
+              "/Sys/FrameWork/Common/Images/icon/field.png"
+            ];
+          }
+
+
+          if (_text.indexOf(":") > -1 && _text.indexOf(":") != _text.lastIndexOf(":")) {
+            var item = _text.split(':'),
+              item0 = unescape(item[0]).trim(),
+              item1 = unescape(item[1]).trim(),
+              item2 = unescape(item[2]).trim(),
+              _type_index = parseInt(item2);
+            if (_language == "csharp") {
+              var _remarks = item[3].split(';'),
+                remark = unescape(_remarks[0]).trim();
+              //item2 = unescape(item[3]).trim(),
+              _text = item0 + (remark == "" ? "" : "【说明】" + remark);
+              elt._insertCode = item1;
+              if (_remarks.length > 1) {
+
+                img_notes = document.createElement("img");
+                img_notes.src = "/Sys/FrameWork/Common/Images/function.gif";
+                img_notes._text = _remarks;
+                $(img_notes).css({
+                  "margin-top": "0",
+                  "margin-right": "0",
+                  //"vertical-align": "middle",
+                  "width": "16px",
+                  "height": "16px",
+                  //"float": "right",
+                  "position": "absolute",
+                  "top": "0",
+                  "right": "0"
+                }).mouseup(function() {
+                  var str = "参数列表：";
+                  for (var i = 1; i < this._text.length; i++) {
+                    str += "\r\n\r\n" + unescape(this._text[i]).trim();
+                  }
+                  alert(str);
+                  //alert(this.parentElement.outerHTML);
+                });
+              }
+            } else {
+              if (item2 == "1") { // 平台方法
+                //_text = item0 + (item1 == "" ? "" : "  【"+item1+"】");
+                _text = item1;
+                elt._insertCode = item0;
+              } else {
+                _text = item0;
+                elt._insertCode = item1;
+              }
+              /*
+              else if (item2 == "2") {  // 全局变量
+                //_text = item0 + (item1 == "" ? "" : "  【"+ item1 +"】");
+                elt._insertCode = item0;
+              }
+              else if (item2 == "3") {  // 代码片段
+                //_text = item0;
+                elt._insertCode = item1;
+              }
+              else if (item2 == "4")  { // 成员方法
+                //_text = item0 + (item1 == "" ? "" : "  【"+ item1 +"】");
+                elt._insertCode = item0;
+              }
+              */
+            }
+          } else {
+            elt._insertCode = _text;
+            _text = _text;
+          }
+
+          img.src = img_src[_type_index];
+          _title.innerText = _title_tips[_type_index];
+        }
+
+        elt.appendChild(document.createTextNode(_text));
+        if (img_notes != null)
+          elt.appendChild(img_notes);
+      }
       elt.hintId = i;
     }
 
@@ -228,6 +384,12 @@
     var winW = window.innerWidth || Math.max(document.body.offsetWidth, document.documentElement.offsetWidth);
     var winH = window.innerHeight || Math.max(document.body.offsetHeight, document.documentElement.offsetHeight);
     (completion.options.container || document.body).appendChild(hints);
+    
+    ///{{{ 修改开始
+    var widtha = $(".CodeMirror-hints").width(), widthb = $(window).width();
+    if (widthb - 50 < widtha)
+	     $(".CodeMirror-hints").css("width", widthb-50);
+    ///修改结束}}} 	     
     var box = hints.getBoundingClientRect(), overlapY = box.bottom - winH;
     var scrolls = hints.scrollHeight > hints.clientHeight + 1
     var startScroll = cm.getScrollInfo();
@@ -426,7 +588,8 @@
     hint: CodeMirror.hint.auto,
     completeSingle: true,
     alignWithWord: true,
-    closeCharacters: /[\s()\[\]{};:>,]/,
+    //closeCharacters: /[\s()\[\]{};:>,]/,
+    closeCharacters: /[;>,]/,
     closeOnUnfocus: true,
     completeOnSingleClick: true,
     container: null,

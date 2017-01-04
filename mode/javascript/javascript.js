@@ -22,7 +22,7 @@ CodeMirror.defineMode("javascript", function(config, parserConfig) {
   var jsonldMode = parserConfig.jsonld;
   var jsonMode = parserConfig.json || jsonldMode;
   var isTS = parserConfig.typescript;
-  var wordRE = parserConfig.wordCharacters || /[\w$\xa1-\uffff]/;
+  var wordRE = parserConfig.wordCharacters || /[\w$\xa1-\uffff]|[\[\]$:]/;
 
   // Tokenizer
 
@@ -108,7 +108,7 @@ CodeMirror.defineMode("javascript", function(config, parserConfig) {
       return ret("number", "number");
     } else if (ch == "." && stream.match("..")) {
       return ret("spread", "meta");
-    } else if (/[\[\]{}\(\),;\:\.]/.test(ch)) {
+    } else if (/[{}\(\),;\.]/.test(ch)) {
       return ret(ch);
     } else if (ch == "=" && stream.eat(">")) {
       return ret("=>", "operator");
