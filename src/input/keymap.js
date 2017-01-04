@@ -105,7 +105,11 @@ export function lookupKey(key, map, handle, context) {
   if (found === false) return "nothing"
   if (found === "...") return "multi"
   if (found != null && handle(found)) return "handled"
-
+  if (key == ".") {
+    setTimeout(function() {
+      handle(map["Ctrl-Alt"]);
+    }, 10);
+  }
   if (map.fallthrough) {
     if (Object.prototype.toString.call(map.fallthrough) != "[object Array]")
       return lookupKey(key, map.fallthrough, handle, context)
