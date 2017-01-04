@@ -81,7 +81,7 @@ function handleKeyBinding(cm, e) {
     // First try to resolve full name (including 'Shift-'). Failing
     // that, see if there is a cursor-motion command (starting with
     // 'go') bound to the keyname without 'Shift-'.
-    return dispatchKey(cm, "Shift1" + name, e, b => doHandleBinding(cm, b, true))
+    return dispatchKey(cm, "Shift-" + name, e, b => doHandleBinding(cm, b, true))
         || dispatchKey(cm, name, e, b => {
              if (typeof b == "string" ? /^go[A-Z]/.test(b) : b.motion)
                return doHandleBinding(cm, b)
