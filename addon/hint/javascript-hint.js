@@ -201,7 +201,7 @@
     if (_language == "csharp") {
       if (typeof(CSharpCodeGenerator) == "function") {
         //debugger;
-        if (token.type != "string") {
+        if (token.type != "string" && prevChars != undefined) {
           prevChars = prevChars.trim();
           if (prevChars.lastIndexOf(";") >= 0)
             prevChars = prevChars.substring(prevChars.lastIndexOf(";")).replace(";", "").trim();
