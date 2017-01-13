@@ -24,6 +24,8 @@ function doHandleBinding(cm, bound, dropShift) {
     if (cm.isReadOnly()) cm.state.suppressEdits = true
     if (dropShift) cm.display.shift = false
     done = bound(cm) != Pass
+  } catch(err){
+
   } finally {
     cm.display.shift = prevShift
     cm.state.suppressEdits = false
