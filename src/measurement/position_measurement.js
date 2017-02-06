@@ -8,7 +8,7 @@ import { ie, ie_version } from "../util/browser"
 import { elt, removeChildren, range, removeChildrenAndAdd } from "../util/dom"
 import { e_target } from "../util/event"
 import { hasBadZoomedRects } from "../util/feature_detection"
-import { countColumn, findFirst, isExtendingChar, scrollerGap } from "../util/misc"
+import { countColumn, findFirst, isExtendingChar, scrollerGap, skipExtendingChars } from "../util/misc"
 import { updateLineForChanges } from "../display/update_line"
 
 import { widgetHeight } from "./widgets"
@@ -427,7 +427,7 @@ export function coordsChar(cm, x, y) {
 function wrappedLineExtent(cm, lineObj, preparedMeasure, y) {
   let measure = ch => intoCoordSystem(cm, lineObj, measureCharPrepared(cm, preparedMeasure, ch), "line")
   let end = lineObj.text.length
-  let begin = findFirst(ch => measure(ch).bottom < y, end - 1, 0) + 1
+  let begin = findFirst(ch => measure(ch - 1).bottom <= y, end, 0)
   end = findFirst(ch => measure(ch).top > y, begin, end)
   return {begin, end}
 }
@@ -450,7 +450,7 @@ function coordsCharInner(cm, lineObj, lineNo, x, y) {
       prevDiff = diff
       let prevPos = pos
       pos = moveVisually(cm, lineObj, pos, dir)
-      if (pos == null || pos.ch < begin || end <= pos.ch) {
+      if (pos == null || pos.ch < begin || end <= (pos.sticky == "before" ? pos.ch - 1 : pos.ch)) {
         pos = prevPos
         break
       }
@@ -466,12 +466,12 @@ function coordsCharInner(cm, lineObj, lineNo, x, y) {
         end = Math.min(ch, end)
         return true
       }
-      else if (box.bottom < y) return false
+      else if (box.bottom <= y) return false
       else if (box.left > x) return true
       else if (box.right < x) return false
       else return (x - box.left < box.right - x)
     }, begin, end)
-    while (isExtendingChar(lineObj.text.charAt(ch))) ++ch
+    ch = skipExtendingChars(lineObj.text, ch, 1)
     pos = new Pos(lineNo, ch, ch == end ? "before" : "after")
   }
   let coords = cursorCoords(cm, pos, "line", lineObj, preparedMeasure)
