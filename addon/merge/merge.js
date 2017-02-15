@@ -161,7 +161,7 @@
     else { editor = dv.orig; other = dv.edit; }
     // Don't take action if the position of this editor was recently set
     // (to prevent feedback loops)
-    if (editor.state.scrollSetBy == dv && (editor.state.scrollSetAt || 0) + 50 > now) return false;
+    if (editor.state.scrollSetBy == dv && (editor.state.scrollSetAt || 0) + 250 > now) return false;
 
     var sInfo = editor.getScrollInfo();
     if (dv.mv.options.connect == "align") {
@@ -277,7 +277,7 @@
       }
     }
 
-    var chunkStart = 0;
+    var chunkStart = 0, pending = false;
     for (var i = 0; i < diff.length; ++i) {
       var part = diff[i], tp = part[0], str = part[1];
       if (tp == DIFF_EQUAL) {
@@ -285,10 +285,11 @@
         moveOver(pos, str);
         var cleanTo = pos.line + (endOfLineClean(diff, i) ? 1 : 0);
         if (cleanTo > cleanFrom) {
-          if (i) markChunk(chunkStart, cleanFrom);
+          if (pending) { markChunk(chunkStart, cleanFrom); pending = false }
           chunkStart = cleanTo;
         }
       } else {
+        pending = true
         if (tp == type) {
           var end = moveOver(pos, str, true);
           var a = posMax(top, pos), b = posMin(bot, end);
@@ -298,7 +299,7 @@
         }
       }
     }
-    if (chunkStart <= pos.line) markChunk(chunkStart, pos.line + 1);
+    if (pending) markChunk(chunkStart, pos.line + 1);
   }
 
   // Updating the gap between editor and original
@@ -626,10 +627,10 @@
   function endOfLineClean(diff, i) {
     if (i == diff.length - 1) return true;
     var next = diff[i + 1][1];
-    if (next.length == 1 || next.charCodeAt(0) != 10) return false;
+    if ((next.length == 1 && i < diff.length - 2) || next.charCodeAt(0) != 10) return false;
     if (i == diff.length - 2) return true;
     next = diff[i + 2][1];
-    return next.length > 1 && next.charCodeAt(0) == 10;
+    return (next.length > 1 || i == diff.length - 3) && next.charCodeAt(0) == 10;
   }
 
   function startOfLineClean(diff, i) {
