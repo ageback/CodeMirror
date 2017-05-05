@@ -226,6 +226,12 @@
      "  [property method]: [string 'GET']",
      "});");
 
+  MT("indent_switch",
+     "[keyword switch] ([variable x]) {",
+     "  [keyword default]:",
+     "    [keyword return] [number 2]",
+     "}")
+
   var ts_mode = CodeMirror.getMode({indentUnit: 2}, "application/typescript")
   function TS(name) {
     test.mode(name, ts_mode, Array.prototype.slice.call(arguments, 1))
@@ -312,6 +318,11 @@
      "    [keyword this].[property type] [operator =] [variable-2 type];",
      "  }",
      "}")
+
+  TS("typescript_function_generics",
+     "[keyword function] [def a]() {}",
+     "[keyword function] [def b][operator <][variable-3 IA] [keyword extends] [variable-3 object], [variable-3 IB] [keyword extends] [variable-3 object][operator >]() {}",
+     "[keyword function] [def c]() {}")
 
   var jsonld_mode = CodeMirror.getMode(
     {indentUnit: 2},
