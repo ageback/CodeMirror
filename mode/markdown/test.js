@@ -7,10 +7,12 @@
   function MT(name) { test.mode(name, mode, Array.prototype.slice.call(arguments, 1)); }
   var modeHighlightFormatting = CodeMirror.getMode(config, {name: "markdown", highlightFormatting: true});
   function FT(name) { test.mode(name, modeHighlightFormatting, Array.prototype.slice.call(arguments, 1)); }
+  var modeMT_noXml = CodeMirror.getMode(config, {name: "markdown", xml: false});
+  function MT_noXml(name) { test.mode(name, modeMT_noXml, Array.prototype.slice.call(arguments, 1)); }
+  var modeMT_noFencedHighlight = CodeMirror.getMode(config, {name: "markdown", fencedCodeBlockHighlighting: false});
+  function MT_noFencedHighlight(name) { test.mode(name, modeMT_noFencedHighlight, Array.prototype.slice.call(arguments, 1)); }
   var modeAtxNoSpace = CodeMirror.getMode(config, {name: "markdown", allowAtxHeaderWithoutSpace: true});
   function AtxNoSpaceTest(name) { test.mode(name, modeAtxNoSpace, Array.prototype.slice.call(arguments, 1)); }
-  var modeFenced = CodeMirror.getMode(config, {name: "markdown", fencedCodeBlocks: true});
-  function FencedTest(name) { test.mode(name, modeFenced, Array.prototype.slice.call(arguments, 1)); }
   var modeOverrideClasses = CodeMirror.getMode(config, {
     name: "markdown",
     strikethrough: true,
@@ -67,7 +69,7 @@
      "[header&header-1&formatting&formatting-header&formatting-header-1 # ][header&header-1 foo # bar ][header&header-1&formatting&formatting-header&formatting-header-1 #]");
 
   FT("formatting_setextHeader",
-     "foo",
+     "[header&header-1 foo]",
      "[header&header-1&formatting&formatting-header&formatting-header-1 =]");
 
   FT("formatting_blockquote",
@@ -96,6 +98,11 @@
 
   FT("formatting_image",
      "[formatting&formatting-image&image&image-marker !][formatting&formatting-image&image&image-alt-text&link [[][image&image-alt-text&link alt text][formatting&formatting-image&image&image-alt-text&link ]]][formatting&formatting-link-string&string&url (][url&string http://link.to/image.jpg][formatting&formatting-link-string&string&url )]");
+
+  FT("codeBlock",
+     "[comment&formatting&formatting-code-block ```css]",
+     "[tag foo]",
+     "[comment&formatting&formatting-code-block ```]");
 
   MT("plainText",
      "foo");
@@ -228,6 +235,19 @@
   MT("atxH1inline",
      "[header&header-1 # foo ][header&header-1&em *bar*]");
 
+  MT("atxIndentedTooMuch",
+     "[header&header-1 # foo]",
+     "    # bar");
+
+  // disable atx inside blockquote until we implement proper blockquote inner mode
+  // TODO: fix to be CommonMark-compliant
+  MT("atxNestedInsideBlockquote",
+     "[quote&quote-1 > # foo]");
+
+  MT("atxAfterBlockquote",
+     "[quote&quote-1 > foo]",
+     "[header&header-1 # bar]");
+
   // Setext headers - H1, H2
   // Per documentation, "Any number of underlining =’s or -’s will work."
   // http://daringfireball.net/projects/markdown/syntax#header
@@ -237,27 +257,27 @@
   //
   // Check if single underlining = works
   MT("setextH1",
-     "foo",
+     "[header&header-1 foo]",
      "[header&header-1 =]");
 
   // Check if 3+ ='s work
   MT("setextH1",
-     "foo",
+     "[header&header-1 foo]",
      "[header&header-1 ===]");
 
   // Check if single underlining - works
   MT("setextH2",
-     "foo",
+     "[header&header-2 foo]",
      "[header&header-2 -]");
 
   // Check if 3+ -'s work
   MT("setextH2",
-     "foo",
+     "[header&header-2 foo]",
      "[header&header-2 ---]");
 
   // http://spec.commonmark.org/0.19/#example-45
   MT("setextH2AllowSpaces",
-     "foo",
+     "[header&header-2 foo]",
      "   [header&header-2 ----      ]");
 
   // http://spec.commonmark.org/0.19/#example-44
@@ -265,14 +285,49 @@
      "     [comment foo]",
      "[hr ---]");
 
+  MT("setextAfterFencedCode",
+     "[comment ```]",
+     "[comment foo]",
+     "[comment ```]",
+     "[header&header-2 bar]",
+     "[header&header-2 ---]");
+
+  MT("setextAferATX",
+     "[header&header-1 # foo]",
+     "[header&header-2 bar]",
+     "[header&header-2 ---]");
+
   // http://spec.commonmark.org/0.19/#example-51
   MT("noSetextAfterQuote",
      "[quote&quote-1 > foo]",
+     "[hr ---]",
+     "",
+     "[quote&quote-1 > foo]",
+     "[quote&quote-1 bar]",
      "[hr ---]");
 
   MT("noSetextAfterList",
      "[variable-2 - foo]",
+     "[hr ---]",
+     "",
+     "[variable-2 - foo]",
+     "bar",
      "[hr ---]");
+
+  MT("setext_nestedInlineMarkup",
+     "[header&header-1 foo ][em&header&header-1 *bar*]",
+     "[header&header-1 =]");
+
+  MT("setext_linkDef",
+     "[link [[aaa]]:] [string&url http://google.com 'title']",
+     "[hr ---]");
+
+  // currently, looks max one line ahead, thus won't catch valid CommonMark
+  //  markup
+  MT("setext_oneLineLookahead",
+     "foo",
+     "[header&header-1 bar]",
+     "[header&header-1 =]");
 
   // Single-line blockquote with trailing space
   MT("blockquoteSpace",
@@ -287,11 +342,21 @@
      "foo",
      "[quote&quote-1 > bar]");
 
-  // Nested blockquote
-  MT("blockquoteSpace",
+  MT("blockquoteNested",
      "[quote&quote-1 > foo]",
      "[quote&quote-1 >][quote&quote-2 > foo]",
      "[quote&quote-1 >][quote&quote-2 >][quote&quote-3 > foo]");
+
+  // ensure quote-level is inferred correctly even if indented
+  MT("blockquoteNestedIndented",
+     " [quote&quote-1 > foo]",
+     " [quote&quote-1 >][quote&quote-2 > foo]",
+     " [quote&quote-1 >][quote&quote-2 >][quote&quote-3 > foo]");
+
+  // ensure quote-level is inferred correctly even if indented
+  MT("blockquoteIndentedTooMuch",
+     "foo",
+     "    > bar");
 
   // Single-line blockquote followed by normal paragraph
   MT("blockquoteThenParagraph",
@@ -393,6 +458,27 @@
   MT("hrAfterList",
      "[variable-2 - foo]",
      "[hr -----]");
+
+  MT("hrAfterFencedCode",
+     "[comment ```]",
+     "[comment code]",
+     "[comment ```]",
+     "[hr ---]");
+
+  // allow hr inside lists
+  // (require prev line to be empty or hr, TODO: non-CommonMark-compliant)
+  MT("hrInsideList",
+     "[variable-2 - foo]",
+     "",
+     "  [hr ---]",
+     "     [hr ---]",
+     "",
+     "      [comment ---]");
+
+  MT("consecutiveHr",
+     "[hr ---]",
+     "[hr ---]",
+     "[hr ---]");
 
   // Formatting in lists (*)
   MT("listAsteriskFormatting",
@@ -508,7 +594,7 @@
      "  [variable-2 de-indented text part of list1 again]",
      "",
      "  [variable-2&comment ```]",
-     "  [variable-2&comment code]",
+     "  [comment code]",
      "  [variable-2&comment ```]",
      "",
      "  [variable-2 text after fenced code]");
@@ -531,6 +617,19 @@
      "\t[variable-3 * list2]",
      "",
      "\t\t[variable-3 part of list2]");
+
+  MT("listAfterBlockquote",
+     "[quote&quote-1 > foo]",
+     "[variable-2 - bar]");
+
+  // shouldn't create sublist if it's indented more than allowed
+  MT("nestedListIndentedTooMuch",
+     "[variable-2 - foo]",
+     "          [variable-2 - bar]");
+
+  MT("listIndentedTooMuchAfterParagraph",
+     "foo",
+     "    - bar");
 
   // Blockquote
   MT("blockquote",
@@ -993,18 +1092,33 @@
   MT("taskList",
      "[variable-2 * ][link&variable-2 [[ ]]][variable-2 bar]");
 
-  MT("noFencedCodeBlocks",
-     "~~~",
-     "foo",
-     "~~~");
-
-  FencedTest("fencedCodeBlocks",
+  MT("fencedCodeBlocks",
      "[comment ```]",
      "[comment foo]",
+     "",
+     "[comment bar]",
+     "[comment ```]",
+     "baz");
+
+  MT("fencedCodeBlockModeSwitching",
+     "[comment ```javascript]",
+     "[variable foo]",
+     "",
      "[comment ```]",
      "bar");
 
-  FencedTest("fencedCodeBlocksMultipleChars",
+  MT_noFencedHighlight("fencedCodeBlock_noHighlight",
+     "[comment ```javascript]",
+     "[comment foo]",
+     "[comment ```]");
+
+  MT("fencedCodeBlockModeSwitchingObjc",
+     "[comment ```objective-c]",
+     "[keyword @property] [variable NSString] [operator *] [variable foo];",
+     "[comment ```]",
+     "bar");
+
+  MT("fencedCodeBlocksMultipleChars",
      "[comment `````]",
      "[comment foo]",
      "[comment ```]",
@@ -1012,20 +1126,20 @@
      "[comment `````]",
      "bar");
 
-  FencedTest("fencedCodeBlocksTildes",
+  MT("fencedCodeBlocksTildes",
      "[comment ~~~]",
      "[comment foo]",
      "[comment ~~~]",
      "bar");
 
-  FencedTest("fencedCodeBlocksTildesMultipleChars",
+  MT("fencedCodeBlocksTildesMultipleChars",
      "[comment ~~~~~]",
      "[comment ~~~]",
      "[comment foo]",
      "[comment ~~~~~]",
      "bar");
 
-  FencedTest("fencedCodeBlocksMultipleChars",
+  MT("fencedCodeBlocksMultipleChars",
      "[comment `````]",
      "[comment foo]",
      "[comment ```]",
@@ -1033,12 +1147,35 @@
      "[comment `````]",
      "bar");
 
-  FencedTest("fencedCodeBlocksMixed",
+  MT("fencedCodeBlocksMixed",
      "[comment ~~~]",
      "[comment ```]",
      "[comment foo]",
      "[comment ~~~]",
      "bar");
+
+  MT("fencedCodeBlocksAfterBlockquote",
+     "[quote&quote-1 > foo]",
+     "[comment ```]",
+     "[comment bar]",
+     "[comment ```]");
+
+  // fencedCode indented too much should act as simple indentedCode
+  //  (hence has no highlight formatting)
+  FT("tooMuchIndentedFencedCode",
+     "    [comment ```]",
+     "    [comment code]",
+     "    [comment ```]");
+
+  MT("autoTerminateFencedCodeWhenLeavingList",
+     "[variable-2 - list1]",
+     "  [variable-3 - list2]",
+     "    [variable-3&comment ```]",
+     "    [comment code]",
+     "  [variable-3 - list2]",
+     "  [variable-2&comment ```]",
+     "  [comment code]",
+     "[quote&quote-1 > foo]");
 
   // Tests that require XML mode
 
@@ -1057,5 +1194,8 @@
      "[link <http://github.com/>]",
      "[tag&bracket <][tag div][tag&bracket >]",
      "[tag&bracket </][tag div][tag&bracket >]");
+
+  MT_noXml("xmlHighlightDisabled",
+     "<div>foo</div>");
 
 })();
