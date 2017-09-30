@@ -3979,6 +3979,15 @@
         var history = cm.doc.history.done;
         var event = history[history.length - 2];
         return event && event.ranges && event.ranges[0].head;
+      } else if (markName == '.') {
+        if (cm.doc.history.lastModTime == 0) {
+          return  // If no changes, bail out; don't bother to copy or reverse history array.
+        } else {
+          var changeHistory = cm.doc.history.done.filter(function(el){ if (el.changes !== undefined) { return el } });
+          changeHistory.reverse();
+          var lastEditPos = changeHistory[0].changes[0].to;
+        }
+        return lastEditPos;
       }
 
       var mark = vim.marks[markName];
@@ -4789,7 +4798,8 @@
       // so as to update the ". register as expected in real vim.
       var text = [];
       if (!isPlaying) {
-        var selLength = lastChange.inVisualBlock ? vim.lastSelection.visualBlock.height : 1;
+        var selLength = lastChange.inVisualBlock && vim.lastSelection ?
+            vim.lastSelection.visualBlock.height : 1;
         var changes = lastChange.changes;
         var text = [];
         var i = 0;
