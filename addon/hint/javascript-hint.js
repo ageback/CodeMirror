@@ -53,15 +53,16 @@
 		top.stringValueInput = "";
 		top.wesoftInputStringType = false;
 	}
-    token.state = CodeMirror.innerMode(editor.getMode(), token.state).state;
-	if (token.string == ".")
-		top.wesoftClickChar = ".";
-	else
-		top.wesoftClickChar = "";
-	//top._tttt += "," + top.wesoftClickChar;
+    var innerMode = CodeMirror.innerMode(editor.getMode(), token.state);
+    if (innerMode.mode.helperType === "json") return;
+    token.state = innerMode.state;
+    if (token.string == ".")
+	top.wesoftClickChar = ".";
+    else
+	top.wesoftClickChar = "";
     // If it's not a 'word-style' token, ignore the token.
     if (!/^[\w$_]*$/.test(token.string)) {
-      token = {start: cur.ch, end: cur.ch, string: token.string, state: token.state,
+      token = {start: cur.ch, end: cur.ch, string: "", state: token.state,
                type: token.string == "." ? "property" : null};
     } else if (token.end > cur.ch) {
       token.end = cur.ch;
