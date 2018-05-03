@@ -355,7 +355,7 @@ export default class ContentEditableInput {
   }
 
   onKeyPress(e) {
-    if (e.charCode == 0) return
+    if (e.charCode == 0 || this.composing) return
     e.preventDefault()
     if (!this.cm.isReadOnly())
       operation(this.cm, applyTextInput)(this.cm, String.fromCharCode(e.charCode == null ? e.keyCode : e.charCode), 0)
@@ -396,12 +396,13 @@ function isInGutter(node) {
 function badPos(pos, bad) { if (bad) pos.bad = true; return pos }
 
 function domTextBetween(cm, from, to, fromLine, toLine) {
-  let text = "", closing = false, lineSep = cm.doc.lineSeparator()
+  let text = "", closing = false, lineSep = cm.doc.lineSeparator(), extraLinebreak = false
   function recognizeMarker(id) { return marker => marker.id == id }
   function close() {
     if (closing) {
       text += lineSep
-      closing = false
+      if (extraLinebreak) text += lineSep
+      closing = extraLinebreak = false
     }
   }
   function addText(str) {
@@ -413,8 +414,8 @@ function domTextBetween(cm, from, to, fromLine, toLine) {
   function walk(node) {
     if (node.nodeType == 1) {
       let cmText = node.getAttribute("cm-text")
-      if (cmText != null) {
-        addText(cmText || node.textContent.replace(/\u200b/g, ""))
+      if (cmText) {
+        addText(cmText)
         return
       }
       let markerID = node.getAttribute("cm-marker"), range
@@ -425,19 +426,24 @@ function domTextBetween(cm, from, to, fromLine, toLine) {
         return
       }
       if (node.getAttribute("contenteditable") == "false") return
-      let isBlock = /^(pre|div|p)$/i.test(node.nodeName)
+      let isBlock = /^(pre|div|p|li|table|br)$/i.test(node.nodeName)
+      if (!/^br$/i.test(node.nodeName) && node.textContent.length == 0) return
+
       if (isBlock) close()
       for (let i = 0; i < node.childNodes.length; i++)
         walk(node.childNodes[i])
+
+      if (/^(pre|p)$/i.test(node.nodeName)) extraLinebreak = true
       if (isBlock) closing = true
     } else if (node.nodeType == 3) {
-      addText(node.nodeValue)
+      addText(node.nodeValue.replace(/\u200b/g, "").replace(/\u00a0/g, " "))
     }
   }
   for (;;) {
     walk(from)
     if (from == to) break
     from = from.nextSibling
+    extraLinebreak = false
   }
   return text
 }
